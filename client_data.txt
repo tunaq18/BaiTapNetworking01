@@ -1,0 +1,2 @@
+Hello server!
+Testing exercise 02
