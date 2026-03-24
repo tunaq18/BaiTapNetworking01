@@ -11,7 +11,7 @@
 
 int main(){
     int sockfd;
-    struct sockaddr_in server_addr;
+    struct sockaddr_in server;
     char buffer[BUFFER_SIZE];
 
     // Tạo socket
@@ -20,17 +20,20 @@ int main(){
         exit(EXIT_FAILURE);
     }
     // Thiết lập địa chỉ server
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(PORT);
-    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server.sin_family = AF_INET;
+    server.sin_port = htons(PORT);
+    server.sin_addr.s_addr = inet_addr("127.0.0.1");
     // Kết nối đến server
-    if(connect(sockfd,(struct sockaddr *)&server_addr, sizeof(server_addr))<0){
+    if(connect(sockfd,(struct sockaddr *)&server, sizeof(server))<0){
         perror("connect");
         exit(EXIT_FAILURE);
     }
 
-    while(fgets(buffer, sizeof(buffer), stdin) != NULL){
-        send(sockfd, buffer, strlen(buffer), 0);
+    printf("Nhap du lieu (Ctrl+D de ket thuc):\n");
+    while(1){
+        fgets(buffer,BUFFER_SIZE,stdin);
+        buffer[strcspn(buffer,"\n")]='\0';
+        send(sockfd,buffer,strlen(buffer),0);
     }
     close(sockfd);
     return 0;
