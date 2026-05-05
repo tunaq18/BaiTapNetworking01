@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/wait.h>  
 
 #define PORT 8080
 
@@ -22,6 +23,8 @@ int main() {
     printf("Server running on port %d...\n", PORT);
 
     while (1) {
+        while (waitpid(-1, NULL, WNOHANG) > 0);
+
         int client = accept(listener, NULL, NULL);
         if (client < 0) continue;
 
@@ -51,7 +54,7 @@ int main() {
             close(client);
             printf("Client handled by PID: %d\n", getpid());
 
-            exit(0); 
+            exit(0);
         }
         else if (pid > 0) {
             // parent process
