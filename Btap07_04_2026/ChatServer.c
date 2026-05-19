@@ -17,6 +17,7 @@ typedef struct{
     int is_registered;
 }Client;
 
+
 void broadcast(Client clients[], int sender_idx, char *message, int num_clients) {
     char time_str[20];
     time_t now = time(NULL);
