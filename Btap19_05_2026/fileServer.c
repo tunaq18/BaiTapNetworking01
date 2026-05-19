@@ -1,52 +1,213 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <fcntl.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <arpa/inet.h>
 
-int main()
+#define PORT 9000
+#define SIZE 1024
+#define FOLDER "./files"
+
+void sendFileList(int client)
 {
-    int serverSock, clientSock;
+    DIR *dir;
+    struct dirent *entry;
 
-    serverSock = socket(AF_INET, SOCK_STREAM,0);
+    dir = opendir(FOLDER);
 
-    // bind
-    // listen
+    if(dir==NULL)
+    {
+        send(client,
+              "ERROR No files to download\r\n",
+              30,0);
+
+        close(client);
+        exit(0);
+    }
+
+    int count=0;
+
+    while((entry=readdir(dir))!=NULL)
+    {
+        if(entry->d_type==DT_REG)
+            count++;
+    }
+
+    if(count==0)
+    {
+        send(client,
+              "ERROR No files to download\r\n",
+              30,0);
+
+        closedir(dir);
+
+        close(client);
+
+        exit(0);
+    }
+
+    rewinddir(dir);
+
+    char msg[4096]="";
+
+    sprintf(msg,"OK %d\r\n",count);
+
+    while((entry=readdir(dir))!=NULL)
+    {
+        if(entry->d_type==DT_REG)
+        {
+            strcat(msg,entry->d_name);
+            strcat(msg,"\r\n");
+        }
+    }
+
+    strcat(msg,"\r\n");
+
+    send(client,msg,strlen(msg),0);
+
+    closedir(dir);
+}
+
+void sendFile(int client)
+{
+    char filename[100];
 
     while(1)
     {
-        clientSock = accept(serverSock,NULL,NULL);
+        memset(filename,0,sizeof(filename));
 
-        int pid = fork();
+        int n=recv(client,
+                   filename,
+                   sizeof(filename),
+                   0);
 
-        if(pid == 0)
+        if(n<=0)
+            return;
+
+        filename[strcspn(filename,"\r\n")]=0;
+
+        char path[200];
+
+        sprintf(path,
+                "%s/%s",
+                FOLDER,
+                filename);
+
+        int fd=open(path,O_RDONLY);
+
+        if(fd<0)
         {
-            // tiến trình con
+            send(client,
+                 "ERROR File not found\r\n",
+                 24,
+                 0);
 
-            close(serverSock);
+            continue;
+        }
 
-            printf("Child %d xu ly client\n",getpid());
+        struct stat st;
 
-            // gửi danh sách file
-            // nhận tên file
-            // gửi nội dung file
+        stat(path,&st);
 
-            close(clientSock);
+        int filesize=st.st_size;
+
+        char header[100];
+
+        sprintf(header,
+                "OK %d\r\n",
+                filesize);
+
+        send(client,
+             header,
+             strlen(header),
+             0);
+
+        char buffer[SIZE];
+
+        while((n=read(fd,
+                      buffer,
+                      SIZE))>0)
+        {
+            send(client,
+                 buffer,
+                 n,
+                 0);
+        }
+
+        close(fd);
+
+        break;
+    }
+}
+
+int main()
+{
+    int serverSocket;
+    int clientSocket;
+
+    struct sockaddr_in serverAddr;
+    struct sockaddr_in clientAddr;
+
+    socklen_t len;
+
+    serverSocket=socket(
+                    AF_INET,
+                    SOCK_STREAM,
+                    0);
+
+    serverAddr.sin_family=AF_INET;
+    serverAddr.sin_port=htons(PORT);
+    serverAddr.sin_addr.s_addr=INADDR_ANY;
+
+    bind(serverSocket,
+         (struct sockaddr*)&serverAddr,
+         sizeof(serverAddr));
+
+    listen(serverSocket,5);
+
+    printf("Server started...\n");
+
+    while(1)
+    {
+        len=sizeof(clientAddr);
+
+        clientSocket=
+        accept(serverSocket,
+              (struct sockaddr*)&clientAddr,
+              &len);
+
+        int pid=fork();
+
+        if(pid==0)
+        {
+            close(serverSocket);
+
+            sendFileList(clientSocket);
+
+            sendFile(clientSocket);
+
+            close(clientSocket);
 
             exit(0);
         }
         else
         {
-            // tiến trình cha
+            close(clientSocket);
 
-            close(clientSock);
-
-            // dọn zombie
-            waitpid(-1,NULL,WNOHANG);
+            waitpid(
+                -1,
+                NULL,
+                WNOHANG);
         }
     }
 
-    close(serverSock);
+    close(serverSocket);
 
     return 0;
 }
