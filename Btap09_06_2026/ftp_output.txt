@@ -1,0 +1,12 @@
+Connected to lebavui.io.vn.
+220 (vsFTPd 3.0.5)
+331 Please specify the password.
+230 Login successful.
+Remote system type is UNIX.
+Using binary mode to transfer files.
+229 Entering Extended Passive Mode (|||10203|)
+150 Here comes the directory listing.
+-rw-r--r--    1 1002     1002          101 Jun 10 21:54 answer_TQLBks.txt
+-rw-r--r--    1 1002     1002          101 Jun 05 23:13 question_TQLBks.txt
+226 Directory send OK.
+221 Goodbye.
